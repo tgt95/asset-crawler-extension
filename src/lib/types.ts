@@ -2,6 +2,10 @@ export type AssetType = 'image' | 'svg' | 'video' | 'audio' | 'icon' | 'other';
 
 export type AssetSourceKind = 'remote' | 'inline';
 
+export type NameSource = 'svg-title' | 'use-href' | 'aria-label' | 'data-attribute' | 'nearby-text' | 'class-name' | 'fallback';
+
+export type NameConfidence = 'high' | 'medium' | 'low' | 'fallback';
+
 export type DiscoveredAsset = {
   id: string;
   type: AssetType;
@@ -9,7 +13,12 @@ export type DiscoveredAsset = {
   tagName: string;
   url?: string;
   inlineContent?: string;
+  thumbnailUrl?: string;
   fileName: string;
+  originalFileName?: string;
+  inferredName?: string;
+  nameSource?: NameSource;
+  nameConfidence?: NameConfidence;
   extension: string;
   width?: number;
   height?: number;

@@ -91,6 +91,7 @@ export function buildDownloadFilename(asset: DiscoveredAsset, folderPath: string
 
 export function filterAssets(assets: DiscoveredAsset[], query: string, activeTypes: Set<AssetType>): DiscoveredAsset[] {
   const normalized = query.trim().toLowerCase();
+  const extensionQuery = normalized.startsWith('.') ? normalized.slice(1) : normalized;
 
   return assets.filter((asset) => {
     if (activeTypes.size > 0 && !activeTypes.has(asset.type)) {
@@ -101,10 +102,21 @@ export function filterAssets(assets: DiscoveredAsset[], query: string, activeTyp
       return true;
     }
 
-    return [asset.fileName, asset.extension, asset.type, asset.tagName, asset.url ?? '']
+    return [
+      asset.fileName,
+      asset.originalFileName ?? '',
+      asset.inferredName ?? '',
+      asset.nameSource ?? '',
+      asset.extension,
+      `.${asset.extension}`,
+      asset.type,
+      asset.tagName,
+      `<${asset.tagName.toLowerCase()}>`,
+      asset.url ?? '',
+    ]
       .join(' ')
       .toLowerCase()
-      .includes(normalized);
+      .includes(normalized) || asset.extension.toLowerCase() === extensionQuery;
   });
 }
 

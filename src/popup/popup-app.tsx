@@ -3,18 +3,21 @@ import {
   Cross2Icon,
   DownloadIcon,
   ExclamationTriangleIcon,
+  FileIcon,
   InfoCircledIcon,
   MagnifyingGlassIcon,
   ReloadIcon,
+  SpeakerLoudIcon,
+  VideoIcon,
 } from '@radix-ui/react-icons';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { dedupeAssets, filterAssets, sanitizeFolderPath } from '@/lib/assets';
+import { ensureSvgFileName, sourceLabel } from '@/lib/icon-naming';
 import { scanCurrentPage } from '@/lib/page-scanner';
 import type { AssetType, DiscoveredAsset, DownloadAssetRequest, DownloadAssetResponse, DownloadStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -167,19 +170,30 @@ export function App() {
     });
   }
 
+  function updateAssetFileName(assetId: string, fileName: string) {
+    setAssets((current) => current.map((asset) => (asset.id === assetId ? { ...asset, fileName } : asset)));
+  }
+
+  function commitAssetFileName(assetId: string) {
+    setAssets((current) =>
+      current.map((asset) => {
+        if (asset.id !== assetId) {
+          return asset;
+        }
+
+        const fallbackName = asset.originalFileName || `${asset.type}-${asset.id}.${asset.extension}`;
+        const fileName = asset.extension === 'svg' ? ensureSvgFileName(asset.fileName || fallbackName) : asset.fileName.trim() || fallbackName;
+
+        return { ...asset, fileName };
+      }),
+    );
+  }
+
   return (
     <TooltipProvider delayDuration={240}>
-      <main className="min-h-[620px] bg-[#f7f7f4] text-zinc-900">
-        <section className="border-b border-zinc-200/80 bg-[#fdfdfb] px-4 py-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-emerald-700 shadow-[0_0_0_4px_rgba(4,120,87,0.1)]" />
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Asset Crawler</p>
-              </div>
-              <h1 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-zinc-950">Download page media</h1>
-            </div>
-
+      <main className="flex h-[580px] max-h-[580px] flex-col overflow-hidden bg-[#f7f7f4] text-zinc-900">
+        <section className="shrink-0 border-b border-zinc-200/80 bg-[#fdfdfb] px-3 py-3 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+          <div className="grid grid-cols-[auto_1fr_auto] gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button size="icon" variant="ghost" onClick={scanActiveTab} disabled={scanState === 'loading'} aria-label="Rescan active tab">
@@ -188,32 +202,29 @@ export function App() {
               </TooltipTrigger>
               <TooltipContent>Rescan active tab</TooltipContent>
             </Tooltip>
-          </div>
-
-          <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
             <label className="relative block">
               <span className="sr-only">Search assets</span>
               <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search name, extension, URL"
+                placeholder="Search tag, .extension, URL"
                 className="pl-9"
               />
             </label>
-            <Button variant="secondary" onClick={() => setQuery('')} disabled={!query} aria-label="Clear search">
+            <Button variant="secondary" size="icon" onClick={() => setQuery('')} disabled={!query} aria-label="Clear search" className="size-10">
               <Cross2Icon className="size-4" />
             </Button>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {ASSET_TYPES.map((type) => (
               <button
                 key={type}
                 type="button"
                 onClick={() => toggleType(type)}
                 className={cn(
-                  'min-h-9 rounded-full px-3 text-xs font-semibold uppercase tracking-[0.08em] outline-none',
+                  'min-h-7 rounded-full px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] outline-none',
                   'transition-[background-color,color,box-shadow,scale] duration-150 ease-out active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-emerald-600/35',
                   activeTypes.has(type)
                     ? 'bg-emerald-800 text-white shadow-[0_4px_14px_rgba(4,120,87,0.18)]'
@@ -226,68 +237,32 @@ export function App() {
           </div>
         </section>
 
-        <section className="px-4 py-3">
-          <div className="grid gap-2">
-            <div className="flex items-end justify-between gap-3">
-              <label className="grid flex-1 gap-1.5">
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700">
-                  Downloads subfolder
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoCircledIcon className="size-3.5 text-zinc-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>Relative to Chrome Downloads. Absolute paths are blocked by Chrome.</TooltipContent>
-                  </Tooltip>
-                </span>
-                <Input value={folderPath} onChange={(event) => setFolderPath(event.target.value)} placeholder="website-assets" />
-              </label>
-              <Button
-                variant="primary"
-                onClick={downloadSelected}
-                disabled={selectedAssets.length === 0 || !folderValidation.ok || scanState === 'loading'}
-                className="mb-0"
-              >
-                <DownloadIcon className="size-4" />
-                Download <span className="tabular-nums">{selectedAssets.length}</span>
-              </Button>
-            </div>
-
-            {!folderValidation.ok ? (
-              <p className="flex items-center gap-1.5 text-xs font-medium text-rose-700">
-                <ExclamationTriangleIcon className="size-3.5" />
-                {folderValidation.error}
-              </p>
-            ) : (
-              <p className="text-xs text-zinc-500">Leave blank to save directly in Downloads.</p>
-            )}
-          </div>
-        </section>
-
-        <section className="mx-4 rounded-[18px] bg-white p-2 shadow-[0_0_0_1px_rgba(0,0,0,0.07),0_18px_36px_-24px_rgba(0,0,0,0.28)]">
-          <div className="flex min-h-11 items-center justify-between gap-3 rounded-[10px] bg-zinc-50 px-3">
+        <section className="mx-3 mb-3 mt-3 flex min-h-0 flex-1 flex-col rounded-[14px] bg-white p-1.5 shadow-[0_0_0_1px_rgba(0,0,0,0.07),0_18px_36px_-24px_rgba(0,0,0,0.28)]">
+          <div className="flex min-h-9 shrink-0 items-center justify-between gap-2 rounded-[9px] bg-zinc-50 px-2.5">
             <button
               type="button"
               onClick={toggleAllFiltered}
               disabled={filteredAssets.length === 0}
-              className="flex min-h-10 items-center gap-3 rounded-[8px] pr-2 text-left outline-none transition-[opacity,scale] duration-150 ease-out active:scale-[0.96] disabled:opacity-40"
+              className="flex min-h-9 items-center gap-2.5 rounded-[8px] pr-2 text-left outline-none transition-[opacity,scale] duration-150 ease-out active:scale-[0.96] disabled:opacity-40"
             >
               <Checkbox checked={allFilteredSelected} aria-hidden="true" tabIndex={-1} />
-              <span className="text-sm font-medium text-zinc-800">
-                <span className="tabular-nums">{filteredAssets.length}</span> visible
+              <span className="text-xs font-medium text-zinc-800">
+                <span className="tabular-nums">{filteredAssets.length}</span> Total items
               </span>
             </button>
 
             <div className="flex items-center gap-2">
-              <Badge tone={selectedAssets.length ? 'active' : 'neutral'}>
-                <span className="tabular-nums">{selectedAssets.length}</span> selected
-              </Badge>
+              <span className="text-xs font-medium text-zinc-600">
+                <span className="tabular-nums">{selectedAssets.length}</span>{' '}
+                selected
+              </span>
               <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())} disabled={selectedAssets.length === 0}>
                 Clear
               </Button>
             </div>
           </div>
 
-          <ScrollArea className="mt-2 h-[318px] rounded-[10px]">
+          <ScrollArea className="mt-1.5 min-h-0 flex-1 rounded-[9px]">
             {scanState === 'loading' ? <LoadingRows /> : null}
             {scanState === 'error' ? <ErrorState message={error} onRetry={scanActiveTab} /> : null}
             {scanState === 'ready' && assets.length === 0 ? <EmptyState onRetry={scanActiveTab} /> : null}
@@ -304,6 +279,8 @@ export function App() {
                     checked={selectedIds.has(asset.id)}
                     status={downloadStatuses[asset.id] ?? 'idle'}
                     onToggle={() => toggleAsset(asset.id)}
+                    onRename={(fileName) => updateAssetFileName(asset.id, fileName)}
+                    onRenameCommit={() => commitAssetFileName(asset.id)}
                   />
                 ))}
               </div>
@@ -311,11 +288,44 @@ export function App() {
           </ScrollArea>
         </section>
 
-        {error && scanState !== 'error' ? (
-          <div className="mx-4 mt-3 rounded-[12px] bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800 shadow-[inset_0_0_0_1px_rgba(190,18,60,0.12)]">
-            {error}
+        <section className="shrink-0 border-t border-zinc-200/80 bg-[#fdfdfb] px-3 pb-3 pt-3 shadow-[0_-12px_28px_-24px_rgba(0,0,0,0.36)]">
+          <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+            <label className="grid gap-1">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-700">
+                Downloads subfolder
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoCircledIcon className="size-3 text-zinc-400" />
+                  </TooltipTrigger>
+                  <TooltipContent>Relative to Chrome Downloads. Absolute paths are blocked by Chrome.</TooltipContent>
+                </Tooltip>
+              </span>
+              <Input value={folderPath} onChange={(event) => setFolderPath(event.target.value)} placeholder="website-assets" className="min-h-9" />
+            </label>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={downloadSelected}
+              disabled={selectedAssets.length === 0 || !folderValidation.ok || scanState === 'loading'}
+              className="h-9"
+            >
+              <DownloadIcon className="size-4" />
+              Download <span className="tabular-nums">{selectedAssets.length}</span>
+            </Button>
           </div>
-        ) : null}
+
+          {!folderValidation.ok ? (
+            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-rose-700">
+              <ExclamationTriangleIcon className="size-3.5" />
+              {folderValidation.error}
+            </p>
+          ) : error && scanState !== 'error' ? (
+            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-rose-700">
+              <ExclamationTriangleIcon className="size-3.5" />
+              {error}
+            </p>
+          ) : null}
+        </section>
       </main>
     </TooltipProvider>
   );
@@ -327,54 +337,114 @@ function AssetRow({
   index,
   status,
   onToggle,
+  onRename,
+  onRenameCommit,
 }: {
   asset: DiscoveredAsset;
   checked: boolean;
   index: number;
   status: DownloadStatus;
   onToggle: () => void;
+  onRename: (fileName: string) => void;
+  onRenameCommit: () => void;
 }) {
+  const label = sourceLabel(asset.nameSource);
+  const shouldShowNameSource = asset.sourceKind === 'inline' && label && asset.nameConfidence !== 'fallback';
+
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="asset-row grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-3 text-left outline-none transition-[background-color,scale] duration-150 ease-out hover:bg-zinc-50 focus-visible:bg-emerald-50/50 active:scale-[0.995]"
+    <div
+      className="asset-row grid w-full grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-2.5 px-2.5 py-2 text-left outline-none transition-[background-color,scale] duration-150 ease-out hover:bg-zinc-50 focus-visible:bg-emerald-50/50 active:scale-[0.995]"
       style={{ '--row-index': index } as React.CSSProperties}
     >
-      <Checkbox checked={checked} aria-hidden="true" tabIndex={-1} />
+      <button type="button" className="pt-2.5" onClick={onToggle} aria-label={checked ? 'Deselect asset' : 'Select asset'}>
+        <Checkbox checked={checked} aria-hidden="true" tabIndex={-1} />
+      </button>
+      <AssetThumbnail asset={asset} />
       <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-semibold text-zinc-900">{asset.fileName}</p>
-          <Badge tone={asset.type === 'svg' || asset.type === 'icon' ? 'active' : 'neutral'}>{asset.extension}</Badge>
+        <input
+          value={asset.fileName}
+          onChange={(event) => onRename(event.target.value)}
+          onBlur={onRenameCommit}
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.currentTarget.blur();
+            }
+            if (event.key === 'Escape') {
+              event.currentTarget.blur();
+            }
+          }}
+          aria-label={`Rename ${asset.fileName}`}
+          className="h-5 w-full truncate rounded-[6px] bg-transparent px-0 text-[13px] font-semibold leading-5 text-zinc-900 outline-none transition-[background-color,box-shadow,padding] duration-150 focus:bg-white focus:px-1.5 focus:shadow-[0_0_0_1px_rgba(5,150,105,0.28)]"
+        />
+        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-zinc-500">
+          <span className="shrink-0 rounded-full bg-zinc-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+            {asset.type}
+          </span>
+          <span className="min-w-0 truncate">{asset.url ?? 'inline markup'}</span>
         </div>
-        <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-zinc-500">
-          <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.08em]">{asset.tagName}</span>
-          <span className="truncate">{asset.url ?? 'inline markup'}</span>
-        </div>
+        {shouldShowNameSource ? <p className="mt-0.5 truncate text-[10px] font-medium text-zinc-400">{label}</p> : null}
+        <StatusText status={status} />
       </div>
-      <StatusBadge status={status} />
-    </button>
+    </div>
   );
 }
 
-function StatusBadge({ status }: { status: DownloadStatus }) {
-  if (status === 'complete') return <Badge tone="active">done</Badge>;
-  if (status === 'error') return <Badge tone="error">error</Badge>;
-  if (status === 'queued' || status === 'downloading') return <Badge tone="warning">queued</Badge>;
-  return <Badge tone="neutral">idle</Badge>;
+function AssetThumbnail({ asset }: { asset: DiscoveredAsset }) {
+  const label = `${asset.type} preview`;
+
+  if ((asset.type === 'image' || asset.type === 'svg' || asset.type === 'icon') && asset.thumbnailUrl) {
+    return (
+      <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-[linear-gradient(135deg,#f4f4ef,#ffffff)] shadow-[0_0_0_1px_rgba(0,0,0,0.08),0_4px_12px_rgba(0,0,0,0.06)]">
+        <img
+          src={asset.thumbnailUrl}
+          alt={label}
+          className="max-h-full max-w-full object-contain outline outline-1 -outline-offset-1 outline-black/10"
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
+  if (asset.type === 'video' && asset.thumbnailUrl) {
+    return (
+      <div className="relative size-10 shrink-0 overflow-hidden rounded-[10px] bg-zinc-900 shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.08)]">
+        <video src={asset.thumbnailUrl} className="size-full object-cover opacity-80" muted playsInline preload="metadata" aria-label={label} />
+        <div className="absolute inset-0 grid place-items-center bg-zinc-950/25 text-white">
+          <VideoIcon className="size-4" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-zinc-100 text-zinc-500 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+      {asset.type === 'audio' ? <SpeakerLoudIcon className="size-4" /> : <FileIcon className="size-4" />}
+    </div>
+  );
+}
+
+function StatusText({ status }: { status: DownloadStatus }) {
+  if (status === 'idle') {
+    return null;
+  }
+
+  const label = status === 'complete' ? 'done' : status;
+  return <p className="mt-1 text-[11px] font-medium text-zinc-400">{label}</p>;
 }
 
 function LoadingRows() {
   return (
     <div className="grid gap-2 p-3">
       {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="grid grid-cols-[20px_1fr_52px] items-center gap-3">
+        <div key={index} className="grid grid-cols-[20px_40px_1fr] items-start gap-2.5">
           <div className="skeleton size-5 rounded-[6px]" />
+          <div className="skeleton size-10 rounded-[10px]" />
           <div className="grid gap-2">
             <div className="skeleton h-4 w-3/4 rounded-full" />
             <div className="skeleton h-3 w-full rounded-full" />
+            <div className="skeleton h-5 w-14 rounded-full" />
           </div>
-          <div className="skeleton h-6 rounded-full" />
         </div>
       ))}
     </div>

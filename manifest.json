@@ -4,6 +4,9 @@
   "description": "Find and download DOM-discoverable website media assets from the active tab.",
   "version": "0.1.0",
   "permissions": ["activeTab", "scripting", "downloads", "storage"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' data: blob: http: https:; media-src 'self' data: blob: http: https:;"
+  },
   "action": {
     "default_title": "Asset Crawler",
     "default_popup": "popup.html"
