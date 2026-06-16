@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Asset Crawler Fixture</title>
+    <link rel="icon" href="https://example.com/favicon.ico" />
+    <link rel="preload" as="image" href="https://example.com/preload/catalog-cover.avif" />
+  </head>
+  <body>
+    <main>
+      <img
+        src="https://example.com/images/hero-card.webp"
+        srcset="https://example.com/images/hero-card-small.webp 640w, https://example.com/images/hero-card-large.webp 1280w"
+        width="960"
+        height="540"
+        alt="Fixture hero"
+      />
+
+      <picture>
+        <source srcset="https://example.com/images/editorial.avif 1x, https://example.com/images/editorial@2x.avif 2x" type="image/avif" />
+        <img src="https://example.com/images/editorial.jpg" alt="Fixture editorial" />
+      </picture>
+
+      <svg width="120" height="80" viewBox="0 0 120 80" role="img" aria-label="Inline mark">
+        <rect width="120" height="80" rx="12" fill="#047857"></rect>
+        <path d="M28 54 L54 24 L72 42 L88 28" fill="none" stroke="#f7f7f4" stroke-width="8" stroke-linecap="round"></path>
+      </svg>
+
+      <video src="https://cdn.example.com/video/showreel.mp4" poster="https://cdn.example.com/video/poster.jpg" controls>
+        <source src="https://cdn.example.com/video/showreel.webm" type="video/webm" />
+        <track src="https://cdn.example.com/video/captions.vtt" kind="captions" srclang="en" label="English" />
+      </video>
+
+      <audio src="https://cdn.example.com/audio/ambient-loop.mp3" controls></audio>
+      <embed src="https://example.com/documents/sample.pdf" type="application/pdf" />
+      <object data="https://example.com/vector/logo.svg" type="image/svg+xml"></object>
+    </main>
+  </body>
+</html>

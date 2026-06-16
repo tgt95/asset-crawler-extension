@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Asset Crawler",
+  "description": "Find and download DOM-discoverable website media assets from the active tab.",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "scripting", "downloads", "storage"],
+  "action": {
+    "default_title": "Asset Crawler",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}
